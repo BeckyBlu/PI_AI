@@ -1,12 +1,27 @@
 import express from "express";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
+app.use(express.static(".")); // Serve static files (html, css, js)
 
+// ==================== CONFIGURATION ====================
 const PORT = Number(process.env.PORT || 3000);
+
+// LLM Configuration (Ollama, OpenAI-compatible, or Mistral AI)
+const LLM_PROVIDER = (process.env.LLM_PROVIDER || "ollama").toLowerCase(); // "ollama", "openai", or "mistral"
 const LLM_API_URL = process.env.LLM_API_URL || process.env.OLLAMA_API_URL || process.env.OPENAI_API_BASE || "http://127.0.0.1:11434/api/chat";
-const MODEL = process.env.LLM_MODEL || process.env.OPENAI_MODEL || "llama3";
-const API_KEY = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || "";
+const MODEL = process.env.LLM_MODEL || process.env.OPENAI_MODEL || process.env.MISTRAL_MODEL || "llama3";
+const API_KEY = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.MISTRAL_API_KEY || "";
+
+// Apify Sherlock Configuration
+const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN || "";
+const APIFY_SHERLOCK_ACTOR = process.env.APIFY_SHERLOCK_ACTOR || "apify/sherlock";
+
 const REQUEST_TIMEOUT_MS = 30000;
 
 const SYSTEM_PROMPT = `ROLE:
@@ -67,7 +82,18 @@ function isOpenAIStyleUrl(url) {
 function createRequestBody(userMessage) {
   const messages = buildMessages(userMessage);
 
-  if (isOpenAIStyleUrl(LLM_API_URL)) {
+  // Mistral AI uses OpenAI-compatible API
+  if (LLM_PROVIDER === "mistral") {
+    return {
+      model: MODEL,
+      messages,
+      temperature: 0.6,
+      max_tokens: 2000,
+    };
+  }
+
+  // OpenAI-compatible (including OpenAI itself)
+  if (LLM_PROVIDER === "openai" || isOpenAIStyleUrl(LLM_API_URL)) {
     if (/\/v1\/responses/i.test(LLM_API_URL)) {
       return {
         model: MODEL,
@@ -83,6 +109,7 @@ function createRequestBody(userMessage) {
     };
   }
 
+  // Ollama (default)
   return {
     model: MODEL,
     messages,
@@ -157,6 +184,118 @@ app.get("/health", (_req, res) => {
   res.json({ response: "ok" });
 });
 
+// ==================== SHERLOCK ENDPOINT (Apify) ====================
+app.post("/sherlock", async (req, res) => {
+  if (!APIFY_API_TOKEN) {
+    return res.status(400).json({ 
+      error: "Apify API token not configured. Set APIFY_API_TOKEN environment variable." 
+    });
+  }
+
+  const { usernames } = req.body;
+  if (!Array.isArray(usernames) || usernames.length === 0) {
+    return res.status(400).json({ 
+      error: "Provide an array of usernames to check: { \"usernames\": [\"username1\", \"username2\"] }" 
+    });
+  }
+
+  try {
+    console.log("[sherlock] Running Sherlock for usernames:", usernames);
+
+    const runResponse = await fetch("https://api.apify.com/v2/acts/apify~sherlock/runs", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${APIFY_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        usernames: usernames,
+        maxConcurrency: 5,
+      }),
+    });
+
+    if (!runResponse.ok) {
+      const error = await runResponse.text();
+      console.error("[sherlock] Apify error:", runResponse.status, error);
+      return res.status(502).json({ 
+        error: "Apify API request failed. Check your APIFY_API_TOKEN.",
+        details: error,
+      });
+    }
+
+    const runData = await runResponse.json();
+    const runId = runData.data.id;
+    console.log("[sherlock] Started run:", runId);
+
+    // Poll for results (up to 30 seconds)
+    const startTime = Date.now();
+    const pollInterval = 2000; // 2 seconds
+    const maxWait = 30000; // 30 seconds
+
+    while (Date.now() - startTime < maxWait) {
+      const statusResponse = await fetch(`https://api.apify.com/v2/acts/apify~sherlock/runs/${runId}`, {
+        headers: { "Authorization": `Bearer ${APIFY_API_TOKEN}` },
+      });
+
+      const statusData = await statusResponse.json();
+      const status = statusData.data.status;
+
+      if (status === "SUCCEEDED") {
+        // Now fetch the results
+        const resultResponse = await fetch(
+          `https://api.apify.com/v2/acts/apify~sherlock/runs/${runId}/dataset/items`,
+          {
+            headers: { "Authorization": `Bearer ${APIFY_API_TOKEN}` },
+          }
+        );
+
+        const results = await resultResponse.json();
+        console.log("[sherlock] Results retrieved");
+        return res.json({ 
+          results: results,
+          message: "Sherlock search completed. Results show usernames found on public platforms.",
+        });
+      } else if (status === "FAILED" || status === "ABORTED") {
+        return res.status(502).json({ 
+          error: `Sherlock run ${status}. Try again or check Apify logs.` 
+        });
+      }
+
+      // Wait before polling again
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    return res.status(504).json({ 
+      error: "Sherlock took too long to complete. Try again or check Apify logs." 
+    });
+  } catch (error) {
+    console.error("[sherlock] error:", error);
+    return res.status(500).json({ 
+      error: "Internal server error while running Sherlock.",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/health", (_req, res) => {
+  res.json({ response: "ok" });
+});
+
 app.listen(PORT, () => {
-  console.log(`[server] listening on http://localhost:${PORT}`);
+  console.log(`\n🚀 PI_AI Local Server`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`📍 Server running at http://localhost:${PORT}`);
+  console.log(`\n🤖 LLM Configuration:`);
+  console.log(`   Provider: ${LLM_PROVIDER.toUpperCase()}`);
+  console.log(`   Model: ${MODEL}`);
+  console.log(`   URL: ${LLM_API_URL}`);
+  console.log(`   API Key: ${API_KEY ? "✅ Configured" : "❌ Not configured"}`);
+  console.log(`\n🔍 Sherlock (Apify) Configuration:`);
+  console.log(`   API Token: ${APIFY_API_TOKEN ? "✅ Configured" : "❌ Not configured"}`);
+  console.log(`   Endpoint: POST /sherlock`);
+  console.log(`\n📚 Available Endpoints:`);
+  console.log(`   POST /chat - Send a message`);
+  console.log(`   POST /sherlock - Run Sherlock username search`);
+  console.log(`   GET /health - Health check`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 });

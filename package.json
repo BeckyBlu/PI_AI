@@ -5,9 +5,11 @@
   "type": "module",
   "description": "Local chat proxy server for PI_AI with optional /sherlock command support.",
   "scripts": {
-    "start": "node chat-proxy-server.mjs"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "dependencies": {
+    "dotenv": "^16.3.1",
     "express": "^4.21.2",
     "node-fetch": "^3.3.2"
   }
