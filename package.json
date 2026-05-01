@@ -1,0 +1,14 @@
+{
+  "name": "pi-ai-chat-proxy-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local chat proxy server for PI_AI with optional /sherlock command support.",
+  "scripts": {
+    "start": "node chat-proxy-server.mjs"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "node-fetch": "^3.3.2"
+  }
+}
