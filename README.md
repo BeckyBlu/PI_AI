@@ -1,4 +1,8 @@
-[https://images.squarespace-cdn.com/content/v1/59210e229f745601896d0cdd/386489bc-7a48-4543-ad4b-746e0c05b521/Copy+of+Red+Lipstick+Support+%28Facebook+Cover%29+%283%29.jpg?format=1500w] 
+<p align="center">
+  <a href="/workspaces/PI_AI/RSN(Logo).webp">
+    <img src="RSN(Logo).webp" width="200"/>
+  </a>
+</p>
 ## Role: Trauma-informed support tool with optional technical utilities.
 ## Purpose: Provide respectful, user-led assistance while centering dignity, autonomy, and human rights. Technical tools (like Sherlock) are opt-in and require explicit consent.
 
