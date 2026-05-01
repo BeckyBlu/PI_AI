@@ -277,10 +277,6 @@ app.post("/sherlock", async (req, res) => {
   }
 });
 
-app.get("/health", (_req, res) => {
-  res.json({ response: "ok" });
-});
-
 app.listen(PORT, () => {
   console.log(`\n🚀 PI_AI Local Server`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
