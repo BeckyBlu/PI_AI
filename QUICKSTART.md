@@ -109,5 +109,19 @@ Ensure `APIFY_API_TOKEN` is valid and the username exists on public platforms.
 - 🤖 Chat with Mistral AI (trauma-informed responses)
 - 🔍 Sherlock tool (username reconnaissance for safety)
 - 💜 Dignity-first design (user-led, consent-based)
+- 💽 Optional USB installer for offline deployment
 
 See [README.md](README.md) for full philosophy and protocols.
+
+For a Windows + WSL voice assistant setup using Docker, Rhasspy, Mimic 3, and Mistral, see [SWer_AI-PI_SETUP.md](SWer_AI-PI_SETUP.md).
+
+For USB-based local deployment, use `installer.cjs` and run:
+```bash
+node installer.cjs /path/to/usb
+```
+
+For the optional Electron floating assistant interface, install Electron and then run:
+```bash
+npm install electron --save-dev
+npm run assistant
+```

@@ -23,6 +23,26 @@ Safety/Legal Resources	Link to orgs (e.g., SWOP, ICRSE)	None
 # 2. Technical Tools (Opt-In Only)
 Tool	Purpose	Data Handling	Ethical Guardrails
 Sherlock	Username reconnaissance across social media platforms	Anonymous (no personal data stored)	Only for user-initiated OSINT (e.g., verifying online harassment, safety planning). Never for surveillance or non-consensual use.
+
+## Optional USB Installer
+Use `installer.cjs` for offline USB-based deployment of the SWB Assistant. Run from a USB drive on Windows, macOS, or Linux:
+```bash
+node installer.cjs /path/to/usb
+```
+
+## Optional Floating Assistant
+Use `assistant.cjs` to launch the Electron-based floating assistant UI when Electron is installed in your environment.
+
+Install Electron first if needed:
+```bash
+npm install electron --save-dev
+```
+
+Then run:
+```bash
+npm run assistant
+```
+
 Sherlock Tool Protocol
 When to Mention Sherlock:
 Only if:
